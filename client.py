@@ -1,4 +1,5 @@
 import socket, sys
+import pyaudio
 
 def main(argv):
 	s = socket.socket()         # Create a socket object
@@ -12,7 +13,19 @@ def main(argv):
 	port = int(argv[2])
 
 	s.connect((host, port))
-	print s.recv(1024)
+
+	# instantiate PyAudio (1)
+	p = pyaudio.PyAudio()
+
+	# open stream (2)
+	stream = p.open(format=p.get_format_from_width(2),
+					channels=1,
+	                rate=88200,
+	                output=True)
+	# print s.recv(1024)
+	while True:
+		chunk, addr = s.recvfrom(176)
+		stream.write(chunk)
 	s.close                     # Close the socket when done
 
 if __name__ == '__main__':

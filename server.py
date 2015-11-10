@@ -1,4 +1,6 @@
 import socket, sys, os
+from pydub import AudioSegment
+import pyaudio
 
 def main(argv):
 	s = socket.socket()         # Create a socket object
@@ -15,11 +17,17 @@ def main(argv):
 
 	s.listen(5)                 # Now wait for client connection.
 	print("server running on " + host + ":" + str(port))
-	while True:
-		c, addr = s.accept()     # Establish connection with client.
-		print 'Got connection from', addr
-		c.send('Thank you for connecting')
-		c.close()                # Close the connection
+	song = AudioSegment.from_mp3("../audio/allstar.mp3")
+
+	c, addr = s.accept()     # Establish connection with client.
+	for chunk in song:
+		
+		print(addr)
+		# c.send('Thank you for connecting')
+		print(len(chunk.raw_data))
+		c.sendto(chunk.raw_data, addr)
+
+		# c.close()                # Close the connection
 	return 0
 
 if __name__ == '__main__':
