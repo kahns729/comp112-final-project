@@ -1,4 +1,4 @@
-import socket, sys, os
+import socket, sys, os, threading
 from pydub import AudioSegment
 import pyaudio
 
@@ -19,16 +19,29 @@ def main(argv):
 	print("server running on " + host + ":" + str(port))
 	song = AudioSegment.from_mp3("../audio/allstar.mp3")
 
-	c, addr = s.accept()     # Establish connection with client.
+	clients = []
+
+	# c, addr = s.accept()     # Establish connection with client.
+
+	connect_thread = threading.Thread(target=accept_connection, args=[s, clients])
+	connect_thread.daemon = True
+	connect_thread.start()
+
 	for chunk in song:
 		
-		print(addr)
 		# c.send('Thank you for connecting')
 		print(len(chunk.raw_data))
-		c.sendto(chunk.raw_data, addr)
+		for client, address in clients:
+			client.sendto(chunk.raw_data, address)
 
 		# c.close()                # Close the connection
+	connect_thread.join()
 	return 0
+
+def accept_connection(sock, clients):
+	while True:
+		c, addr = sock.accept()
+		clients.append((c, addr))
 
 if __name__ == '__main__':
 	main(sys.argv)
