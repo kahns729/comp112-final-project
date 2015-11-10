@@ -15,10 +15,11 @@ def main(argv):
 	s.connect((host, port))
 	# Retrieve the information from the server, and replace the hard coded sections below
 	s_data_string, addr = s.recvfrom(100)
-	s_data = s_data_string.split(",")
-	width = s_data[0]
-	f_rate = s_data[1]
-	chunk_size = s_data[2]
+	# print(str(s_data_string))
+	s_data = s_data_string.decode("utf-8").split(",")
+	width = int(s_data[0])
+	f_rate = int(s_data[1])
+	chunk_size = int(s_data[2])
 
 
 	# instantiate PyAudio (1)

@@ -51,9 +51,9 @@ def accept_connection(sock, clients, song):
 		print("found a client!")
 		width = song.sample_width
 		f_rate = song.frame_rate * 2
-		chunk_size = len(song[0])
-		data = str(width + "," + f_rate + "," + chunk_size)
-		client.sendto(data, addr)
+		chunk_size = len(song[0].raw_data)
+		data = str(width) + "," + str(f_rate) + "," + str(chunk_size)
+		c.sendto(bytes(data, "UTF-8"), addr)
 
 		# Find the song's frame width
 		# Find the song's framerate
