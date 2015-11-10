@@ -14,18 +14,24 @@ def main(argv):
 
 	s.connect((host, port))
 	# Retrieve the information from the server, and replace the hard coded sections below
+	s_data_string, addr = s.recvfrom(100)
+	s_data = s_data_string.split(",")
+	width = s_data[0]
+	f_rate = s_data[1]
+	chunk_size = s_data[2]
+
 
 	# instantiate PyAudio (1)
 	p = pyaudio.PyAudio()
 
 	# open stream (2)
-	stream = p.open(format=p.get_format_from_width(2), # Hard coded
+	stream = p.open(format=p.get_format_from_width(width), # Hard coded
 					channels=1,
-	                rate=88200, # Hard coded
+	                rate=f_rate,
 	                output=True)
 	# print s.recv(1024)
 	while True:
-		chunk, addr = s.recvfrom(176) # Hard coded
+		chunk, addr = s.recvfrom(chunk_size) # Hard coded
 		stream.write(chunk)
 	s.close                     # Close the socket when done
 
