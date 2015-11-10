@@ -1,4 +1,5 @@
 import socket, sys, os, threading
+from time import sleep
 from pydub import AudioSegment
 import pyaudio
 
@@ -30,9 +31,15 @@ def main(argv):
 	for chunk in song:
 		
 		# c.send('Thank you for connecting')
-		print(len(chunk.raw_data))
+		# print(len(chunk.raw_data))
+		# Simply skip the time for the client
+		if len(clients) == 0:
+			sleep(0.001)
 		for client, address in clients:
-			client.sendto(chunk.raw_data, address)
+			try:
+				client.sendto(chunk.raw_data, address)
+			except BrokenPipeError:
+				clients.remove((client, address))
 
 		# c.close()                # Close the connection
 	connect_thread.join()
@@ -41,6 +48,7 @@ def main(argv):
 def accept_connection(sock, clients, song):
 	while True:
 		c, addr = sock.accept()
+		print("found a client!")
 		# Find the song's frame width
 		# Find the song's framerate
 		# Find the size of each chunk (i.e. len(song[0].raw_data))
