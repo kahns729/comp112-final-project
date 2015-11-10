@@ -23,7 +23,7 @@ def main(argv):
 
 	# c, addr = s.accept()     # Establish connection with client.
 
-	connect_thread = threading.Thread(target=accept_connection, args=[s, clients])
+	connect_thread = threading.Thread(target=accept_connection, args=[s, clients, song])
 	connect_thread.daemon = True
 	connect_thread.start()
 
@@ -38,9 +38,13 @@ def main(argv):
 	connect_thread.join()
 	return 0
 
-def accept_connection(sock, clients):
+def accept_connection(sock, clients, song):
 	while True:
 		c, addr = sock.accept()
+		# Find the song's frame width
+		# Find the song's framerate
+		# Find the size of each chunk (i.e. len(song[0].raw_data))
+		# Send this information to the client
 		clients.append((c, addr))
 
 if __name__ == '__main__':
