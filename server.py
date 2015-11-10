@@ -41,6 +41,12 @@ def main(argv):
 def accept_connection(sock, clients, song):
 	while True:
 		c, addr = sock.accept()
+		width = song.sample_width
+		f_rate = song.frame_rate * 2
+		chunk_size = len(song[0])
+		data = str(width + "," + f_rate + "," + chunk_size)
+		client.sendto(data, addr)
+
 		# Find the song's frame width
 		# Find the song's framerate
 		# Find the size of each chunk (i.e. len(song[0].raw_data))
