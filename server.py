@@ -1,4 +1,4 @@
-import socket, sys, os, threading
+import socket, sys, os, threading, random
 from time import sleep
 from pydub import AudioSegment
 import pyaudio
@@ -18,7 +18,8 @@ def main(argv):
 
 	s.listen(5)                 # Now wait for client connection.
 	print("server running on " + host + ":" + str(port))
-	song = AudioSegment.from_mp3("../audio/allstar.mp3")
+	songlist = os.listdir("../songs")
+	song = AudioSegment.from_mp3("../songs/" + random.choice(songlist))
 
 	clients = []
 
