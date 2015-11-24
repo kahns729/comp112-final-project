@@ -1,22 +1,44 @@
-from pydub import AudioSegment, playback
+import socket, sys, os, threading, random
+from time import sleep
+from pydub import AudioSegment
 import pyaudio
 
-song = AudioSegment.from_mp3("../audio/allstar.mp3")
+class Stream(object):
+	def __init__(self, port):
+		self.sock = socket.socket()         # Create a socket object
+		self.host = socket.gethostname() # Get local machine name
+		self.sock.bind((self.host, port))        # Bind to the port
+		self.sock.listen(5)                 # Now wait for client connection.
+		print("server running on " + self.host + ":" + str(port))
+		self.songlist = os.listdir("../songs")
+		self.current_song = AudioSegment.from_mp3("../songs/" + random.choice(self.songlist))
+		self.clients = []
 
-first_ten_seconds = song[0:10000]
+	def start(self):
+		for chunk in self.current_song:
+			# Simply skip the time for the client
+			if len(self.clients) == 0:
+				sleep(0.001)
+			for client, address in self.clients:
+				try:
+					client.sendto(chunk.raw_data, address)
+				except BrokenPipeError:
+					self.clients.remove((client, address))
 
-# instantiate PyAudio (1)
-p = pyaudio.PyAudio()
+	def accept_incoming_connections(self):
+		self.connect_thread = threading.Thread(target=self.accept_connection, 
+								args=[])
+		self.connect_thread.daemon = True
+		self.connect_thread.start()
 
-print("width: " + str(song.sample_width))
-print("frame_rate: " + str(song.frame_rate))
+	def accept_connection(self):
+		while True:
+			c, addr = self.sock.accept()
+			print("found a client!")
+			width = self.current_song.sample_width
+			f_rate = self.current_song.frame_rate * 2
+			chunk_size = len(self.current_song[0].raw_data)
+			data = str(width) + "," + str(f_rate) + "," + str(chunk_size)
+			c.sendto(bytes(data, "UTF-8"), addr)
 
-
-# open stream (2)
-stream = p.open(format=p.get_format_from_width(song.sample_width),
-				channels=1,
-                rate=song.frame_rate*2,
-                output=True)
-
-for chunk in song:
-	stream.write(chunk.raw_data)
+			self.clients.append((c, addr))
