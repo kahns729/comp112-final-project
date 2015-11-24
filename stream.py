@@ -7,6 +7,7 @@ class Stream(object):
 	def __init__(self, port):
 		self.sock = socket.socket()         # Create a socket object
 		self.host = socket.gethostname() # Get local machine name
+		self.port = port
 		self.sock.bind((self.host, port))        # Bind to the port
 		self.sock.listen(5)                 # Now wait for client connection.
 		print("server running on " + self.host + ":" + str(port))
@@ -38,7 +39,7 @@ class Stream(object):
 			width = self.current_song.sample_width
 			f_rate = self.current_song.frame_rate * 2
 			chunk_size = len(self.current_song[0].raw_data)
-			data = str(width) + "," + str(f_rate) + "," + str(chunk_size)
+			data = "NS," + str(width) + "," + str(f_rate) + "," + str(chunk_size)
 			c.sendto(bytes(data, "UTF-8"), addr)
 
 			self.clients.append((c, addr))
