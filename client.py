@@ -28,7 +28,7 @@ def main(argv):
 			streamClient.request_songlist()
 		elif cmd == "REQUESTS":
 			# REQUESTLIST
-			streamClient.request_queue()
+			streamClient.request_songqueue()
 		elif "PLAY" in cmd:
 			# PLAY,songname
 			streamClient.request_song(cmd[5:])
