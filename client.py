@@ -19,7 +19,7 @@ def main(argv):
 	print("Welcome to Generic Music Stream!")
 	print("To see a list of songs on the server, type 'SONGS'")
 	print("To see the queue of songs waiting to be played, type 'REQUESTS'")
-	print("To request a song, type 'PLAY [songname]'")
+	print("To request a song, type 'PLAY [songname]' or 'PLAY [song index]'")
 	cmd = input("")
 	while cmd != "END":
 		if cmd == "SONGS":

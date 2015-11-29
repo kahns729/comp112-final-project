@@ -41,7 +41,9 @@ class Stream(object):
 						#print(chunk.raw_data)
 					except BrokenPipeError:
 						# Remove client from request clients and clients list
-						self.rclients.pop(self.clients.index((client, address)))
+						#self.rclients.pop(self.clients.index((client, address)))
+		###YO SETH###
+#TODO: COMMENTING THIS OUT MAY HAVE BEEN A HUGE MISTAKE BUT IT'S THE ONLY WAY I MADE IT SO THAT WE COULD RECONNECT AND MAKE MORE REQUESTS#
 						self.clients.remove((client, address))
 
 	def accept_incoming_connections(self):
@@ -87,28 +89,35 @@ class Stream(object):
 
 	def request(self):
 		while True:
-			print("merh")
 			socks = [client for client, address in self.rclients]
-			inputready, outputready, exceptready = select.select([],socks,[])
-			print("select is done")
-			for s in outputready:
-				data = s.recv(100)
-				parsed_data = data.decode("utf-8").split(",")
-				command = parsed_data[0]
-				print(parsed_data)
-				address = self.rclients[socks.index(s)][1]
-				if command == "SONGLIST":
-					print("songlist requested")
-					# s.sendto(bytes("SC", "UTF-8"), address)
-					s.sendto(bytes(str(self.songlist), "UTF-8"), address)
-				elif command == "REQUESTLIST":
-					s.sendto(bytes(str(self.request_list), "UTF-8"), address)
-				elif command == "PLAY":
-					song_name = parsed_data[1]
-					if os.path.isfile("../songs/" + song_name):
-						self.request_list.append(song_name)
-						s.send(bytes("Song requested!", "UTF-8"))
-					else:
-						s.send(bytes("Song does not exist", "UTF-8"))
+			#funky thing i did to try and fix problems
+			existing_socks = [client for client, address in self.clients]
+			if len(existing_socks) > 0:
+				inputready, outputready, exceptready = select.select([],socks,[])
+				print("select is done")
+				for s in outputready:
+					data = s.recv(100)
+					parsed_data = data.decode("utf-8").split(",")
+					command = parsed_data[0]
+					print(parsed_data)
+					address = self.rclients[socks.index(s)][1]
+					if command == "SONGLIST":
+						print("songlist requested")
+						# s.sendto(bytes("SC", "UTF-8"), address)
+						s.sendto(bytes((str(len(str(self.songlist))) + "##" + str(self.songlist)), "UTF-8"), address)
+					elif command == "REQUESTLIST":
+						s.sendto(bytes((str(len(",".join(self.request_list))) + "##" + str(",".join(self.request_list))), "UTF-8"), address)
+					elif command == "PLAY":
+						song_name = parsed_data[1]
+						if song_name in self.request_list:
+							s.send(bytes("Song has already been requested!", "UTF-8"))
+						elif os.path.isfile("../songs/" + song_name):
+							self.request_list.append(song_name)
+							s.send(bytes("Song " + song_name + " requested!", "UTF-8"))
+						elif int(song_name)-1 < len(self.songlist) and os.path.isfile("../songs/" + self.songlist[int(song_name)-1]):
+							self.request_list.append(self.songlist[int(song_name)-1])
+							s.send(bytes("Song " + self.songlist[int(song_name)-1] + " requested!", "UTF-8"))
+						else:
+							s.send(bytes("Song does not exist", "UTF-8"))
 
 		

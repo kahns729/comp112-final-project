@@ -41,7 +41,7 @@ class StreamClient(object):
 			# header = chunk.decode("utf-8").split("/////")
 			if header == "NS":
 				print("changing song")
-				self.song_change(chunk)
+				self.song_change(chunk, p)
 			# elif header == "SL":
 			# 	print("got songlist")
 			# 	print(str(chunk).split(",")[1])
@@ -52,7 +52,7 @@ class StreamClient(object):
 	def stop(self):
 		self.streaming = False
 
-	def song_change(self, s_data):
+	def song_change(self, s_data, p):
 		s_data = s_data.decode("utf-8").split("/")
 		print(s_data)
 		self.width = int(s_data[0])
@@ -66,16 +66,45 @@ class StreamClient(object):
 
 	def request_songlist(self):
 		self.request_sock.send(bytes("SONGLIST", "UTF-8"))
-		data = self.request_sock.recv(100)
-		print(data)
+		data = self.request_sock.recv(100).decode("utf-8").split("##")
+		length = data[0]
+		if int(length) > len(data):
+			more_data = self.request_sock.recv(int(length) - len(data)).decode("utf-8")
+			songs = data[1] + more_data
+		else:
+			songs = data[1]
+		songs = songs.replace("[", " ")
+		songs = songs.replace("]", "")
+		songs = songs.replace('\'', "")
+		song_list = songs.split(",")
+		i = 1
+		for song in song_list:
+			print(str(i) + "." + song)
+			i = i+1
 
 	def request_songqueue(self):
 		self.request_sock.send(bytes("REQUESTLIST", "UTF-8"))
-		data = self.request_sock.recv(100)
-		print(data)
+		data = self.request_sock.recv(10).decode("utf-8").split("##")
+		length = data[0]
+		if int(length) > len(data):
+			more_data = self.request_sock.recv(int(length) - len(data)).decode("utf-8")
+			songs = data[1] + more_data
+		else:
+			songs = data[1]
+		songs = songs.replace("[", " ")
+		songs = songs.replace("]", "")
+		songs = songs.replace('\'', "")
+		request_list = songs.split(",")
+		i = 1
+		if request_list[0] != "":
+			for song in request_list:
+				print(str(i) + ". " + song)
+				i = i+1
+		else:
+			print("No requests at this time")
 
 	def request_song(self, songname):
 		self.request_sock.send(bytes("PLAY," + songname, "UTF-8"))
-		data = self.request_sock.recv(100)
+		data = self.request_sock.recv(100).decode("utf-8")
 		print(data)
 
