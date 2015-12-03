@@ -2,6 +2,7 @@ import socket, sys
 import pyaudio
 import threading
 from collections import deque
+from time import sleep
 
 class StreamClient(object):
 	def __init__(self, host, port):
@@ -17,7 +18,7 @@ class StreamClient(object):
 		self.streaming = True
 		self.stream = None
 		self.chunk_buffer = deque([])
-		self.client = socket.socket()
+		self.client_sock = socket.socket()
 		self.has_client = False
 
 	def start(self):
@@ -39,8 +40,8 @@ class StreamClient(object):
 		print("Closing " + self.host + ":" + str(self.port + 1) + ", opening " 
 			+ hostname[1] + ":" + str(port - 1))
 
-		self.client.bind((socket.gethostname(), port))
-		self.client.listen(5) 
+		self.client_sock.bind((socket.gethostname(), port))
+		self.client_sock.listen(5) 
 		self.stream_thread = threading.Thread(target=self.accept_and_stream, 
 								args=[])
 		self.stream_thread.daemon = True
@@ -75,23 +76,19 @@ class StreamClient(object):
 			elif header == "SC":
 				# print("received a chunk")
 				# stream.write(bytes(header[1], "UTF-8"))
+				print("chunk chunk chunk")
 				self.stream.write(chunk)
 				if self.has_client:
 					print("POOP")
-					self.chunk_buffer.append(chunk)
+					self.client.sendto(bytes("SC", "UTF-8"), self.client_address)
+					self.client.sendto(chunk, self.client_address)
 
 	def accept_and_stream(self):
-		c, address = self.client.accept()
+		self.client, self.client_address = self.client_sock.accept()
+
 		print("found a client!")
 		self.has_client = True
-		while self.has_client:
-			while len(self.chunk_buffer) > 0:
-				try:
-					c.sendto(bytes("SC", "UTF-8"), address)
-					c.sendto(self.chunk_buffer.popleft(), address)
-				except BrokenPipeError:
-					self.has_client = False
-					pass
+		
 
 
 	def stop(self):
