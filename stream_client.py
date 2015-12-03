@@ -42,15 +42,17 @@ class StreamClient(object):
 
 		self.client_sock.bind((socket.gethostname(), port))
 		self.client_sock.listen(5) 
-		self.stream_thread = threading.Thread(target=self.accept_and_stream, 
-								args=[])
-		self.stream_thread.daemon = True
-		self.stream_thread.start()
+		
 		print("bound on " + str(port))
 		self.host = hostname[1].rstrip()
 		self.sock.close()
 		self.sock = socket.socket()
 		self.sock.connect((self.host, port - 1))
+
+		self.stream_thread = threading.Thread(target=self.accept_and_stream, 
+								args=[])
+		self.stream_thread.daemon = True
+		self.stream_thread.start()
 
 		# instantiate PyAudio (1)
 		p = pyaudio.PyAudio()
@@ -65,21 +67,27 @@ class StreamClient(object):
 			# print(header)
 			header = header.decode("utf-8")
 			chunk, addr = self.sock.recvfrom(self.chunk_size)
+			if len(chunk) < self.chunk_size:
+				print(len(chunk))
+				chunk = chunk.ljust(self.chunk_size)
+				print("less than")
 			# print(chunk)
 			# header = chunk.decode("utf-8").split("/////")
 			if header == "NS":
 				print("changing song")
 				self.song_change(chunk, p)
+				self.client.sendto(bytes("NC", "UTF-8"), self.client_address)
+				self.client.sendto(chunk, self.client_address)
 			# elif header == "SL":
 			# 	print("got songlist")
 			# 	print(str(chunk).split(",")[1])
 			elif header == "SC":
 				# print("received a chunk")
 				# stream.write(bytes(header[1], "UTF-8"))
-				print("chunk chunk chunk")
+				# print("chunk chunk chunk")
 				self.stream.write(chunk)
 				if self.has_client:
-					print("POOP")
+					# print("POOP")
 					self.client.sendto(bytes("SC", "UTF-8"), self.client_address)
 					self.client.sendto(chunk, self.client_address)
 

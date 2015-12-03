@@ -38,8 +38,10 @@ class Stream(object):
 				if self.clients:
 					client, address = self.clients[0]
 					try:
+						# chunk = chunk.raw_data[:self.chunk_size].l
+						chunk = chunk.raw_data
 						client.sendto(bytes("SC", "UTF-8"), address)
-						client.sendto(chunk.raw_data[:self.chunk_size], address)
+						client.sendto(chunk[:self.chunk_size].ljust(self.chunk_size), address)
 					except BrokenPipeError:
 						# Remove client from request clients and clients list
 						self.rclients.pop(self.clients.index((client, address)))
@@ -75,6 +77,7 @@ class Stream(object):
 			peer_streaming_port = str(self.port + 2 + len(self.clients))
 			client.sendto(bytes("PORT/" + peer_streaming_port + (100 - 5 - len(peer_streaming_port)) * " ", "UTF-8"), address)
 			client, address = self.sock.accept()
+			print(address)
 			socket.gethostbyaddr(address[0])[0]
 			self.clients.append((client, address))
 		# Not the first client, connect it to last client in list
