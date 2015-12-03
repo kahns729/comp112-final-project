@@ -77,7 +77,8 @@ class Stream(object):
 		else:
 			a = self.clients[-1][1]
 			print(socket.gethostbyaddr(a[0])[0])
-			client.sendto(bytes("HOST/" + self.host + (100 - len(self.host) - 5) * " ", "UTF-8"), address)
+			host = socket.gethostbyaddr(a[0])[0]
+			client.sendto(bytes("HOST/" + host + (100 - len(host) - 5) * " ", "UTF-8"), address)
 
 	def new_song(self, client=None):
 		width = self.current_song.sample_width
