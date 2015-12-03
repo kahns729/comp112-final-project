@@ -34,7 +34,9 @@ class Stream(object):
 				# Simply skip the time for the client
 				if len(self.clients) == 0:
 					sleep(0.001)
-				for client, address in self.clients:
+				#for client, address in self.clients:
+				if self.clients:
+					client, address = self.clients[0]
 					try:
 						client.sendto(bytes("SC", "UTF-8"), address)
 						client.sendto(chunk.raw_data[:self.chunk_size], address)
@@ -82,6 +84,7 @@ class Stream(object):
 			client.sendto(bytes("HOST/" + host + (100 - len(host) - 5) * " ", "UTF-8"), address)
 			peer_streaming_port = str(self.port + 2 + len(self.clients))
 			client.sendto(bytes("PORT/" + peer_streaming_port + (100 - 5 - len(peer_streaming_port)) * " ", "UTF-8"), address)
+			self.clients.append((client, address))
 
 	def new_song(self, client=None):
 		width = self.current_song.sample_width
@@ -112,12 +115,12 @@ class Stream(object):
 			socks = [client for client, address in self.rclients]
 			# existing_socks = [client for client, address in self.clients]
 			try:
-				print("select time what whaaaaaat")
+				#print("select time what whaaaaaat")
 				inputready, outputready, exceptready = select.select(socks,[],[],1)
 			except select.error:
 				print("continuing, bitch")
 				continue
-			print("select is done")
+			#print("select is done")
 			for s in inputready:
 				print("ping")
 				data = s.recv(100)

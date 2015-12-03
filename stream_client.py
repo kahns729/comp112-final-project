@@ -18,6 +18,7 @@ class StreamClient(object):
 		self.stream = None
 		self.chunk_buffer = deque([])
 		self.client = socket.socket()
+		self.has_client = False
 
 	def start(self):
 		# First receive
@@ -75,17 +76,22 @@ class StreamClient(object):
 				# print("received a chunk")
 				# stream.write(bytes(header[1], "UTF-8"))
 				self.stream.write(chunk)
-				self.chunk_buffer.append(chunk)
+				if self.has_client:
+					print("POOP")
+					self.chunk_buffer.append(chunk)
 
 	def accept_and_stream(self):
 		c, address = self.client.accept()
 		print("found a client!")
-		while len(self.chunk_buffer) > 0:
-			try:
-				c.sendto(bytes("SC", "UTF-8"), address)
-				c.sendto(self.chunk_buffer.popleft(), address)
-			except BrokenPipeError:
-				pass
+		self.has_client = True
+		while self.has_client:
+			while len(self.chunk_buffer) > 0:
+				try:
+					c.sendto(bytes("SC", "UTF-8"), address)
+					c.sendto(self.chunk_buffer.popleft(), address)
+				except BrokenPipeError:
+					self.has_client = False
+					pass
 
 
 	def stop(self):
