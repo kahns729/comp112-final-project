@@ -23,6 +23,16 @@ class StreamClient(object):
 		self.width = int(s_data[1])
 		self.f_rate = int(s_data[2])
 		self.chunk_size = int(s_data[3])
+		# Get hostname that we should receive from
+		hostname, addr = self.sock.recvfrom(100)
+		print(hostname)
+		hostname = hostname.decode("utf-8").split("/")
+		print(hostname)
+		print("Closing " + self.host + ", opening " + hostname[1])
+		self.host = hostname[1].rstrip()
+		self.sock.close()
+		self.sock = socket.socket()
+		self.sock.connect((self.host, self.port))
 
 		# instantiate PyAudio (1)
 		p = pyaudio.PyAudio()
@@ -66,7 +76,7 @@ class StreamClient(object):
 
 	def request_songlist(self):
 		self.request_sock.send(bytes("SONGLIST", "UTF-8"))
-		data = self.request_sock.recv(100).decode("utf-8").split("##")
+		data = self.request_sock.recv(10).decode("utf-8").split("##")
 		length = data[0]
 		if int(length) > len(data):
 			more_data = self.request_sock.recv(int(length) - len(data)).decode("utf-8")
