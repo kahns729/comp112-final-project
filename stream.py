@@ -9,10 +9,10 @@ class Stream(object):
 		self.sock = socket.socket()         # Create a socket object
 		self.host = socket.gethostname() # Get local machine name
 		self.port = port
-		self.sock.bind((self.host, port))        # Bind to the port
+		self.sock.bind((self.host, port + 1))        # Bind to the port
 		self.sock.listen(5)                 # Now wait for client connection.
 		self.request_sock = socket.socket()
-		self.request_sock.bind((self.host, port + 1))
+		self.request_sock.bind((self.host, port))
 		self.request_sock.listen(5)
 		print("server running on " + self.host + " " + str(port))
 		self.songlist = os.listdir("../songs")
@@ -70,14 +70,18 @@ class Stream(object):
 		# If this is the first client, stream directly from server
 		if not self.clients:
 			client.sendto(bytes("HOST/" + self.host + (100 - len(self.host) - 5) * " ", "UTF-8"), address)
+			peer_streaming_port = str(self.port + 2 + len(self.clients))
+			client.sendto(bytes("PORT/" + peer_streaming_port + (100 - 5 - len(peer_streaming_port)) * " ", "UTF-8"), address)
 			client, address = self.sock.accept()
 			socket.gethostbyaddr(address[0])[0]
 			self.clients.append((client, address))
 		# Not the first client, connect it to last client in list
 		else:
 			a = self.clients[-1][1]
-			print(socket.gethostbyaddr(a[0])[0])
-			client.sendto(bytes("HOST/" + self.host + (100 - len(self.host) - 5) * " ", "UTF-8"), address)
+			host = socket.gethostbyaddr(a[0])[0]
+			client.sendto(bytes("HOST/" + host + (100 - len(host) - 5) * " ", "UTF-8"), address)
+			peer_streaming_port = str(self.port + 2 + len(self.clients))
+			client.sendto(bytes("PORT/" + peer_streaming_port + (100 - 5 - len(peer_streaming_port)) * " ", "UTF-8"), address)
 
 	def new_song(self, client=None):
 		width = self.current_song.sample_width

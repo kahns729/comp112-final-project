@@ -1,19 +1,23 @@
 import socket, sys
 import pyaudio
+import threading
+from collections import deque
 
 class StreamClient(object):
 	def __init__(self, host, port):
 		self.sock = socket.socket()         # Create a socket object
 		self.host = host
 		self.port = port
-		self.sock.connect((host, port))
+		self.sock.connect((host, port + 1))
 		self.request_sock = socket.socket()
-		self.request_sock.connect((host, port + 1))
+		self.request_sock.connect((host, port))
 		self.width = 0
 		self.f_rate = 0
 		self.chunk_size = 0
 		self.streaming = True
 		self.stream = None
+		self.chunk_buffer = deque([])
+		self.client = socket.socket()
 
 	def start(self):
 		# First receive
@@ -28,11 +32,23 @@ class StreamClient(object):
 		print(hostname)
 		hostname = hostname.decode("utf-8").split("/")
 		print(hostname)
-		print("Closing " + self.host + ", opening " + hostname[1])
+
+		port, addr = self.sock.recvfrom(100)
+		port = int(port.decode("utf-8").split("/")[1].rstrip())
+		print("Closing " + self.host + ":" + str(self.port + 1) + ", opening " 
+			+ hostname[1] + ":" + str(port - 1))
+
+		self.client.bind((socket.gethostname(), port))
+		self.client.listen(5) 
+		self.stream_thread = threading.Thread(target=self.accept_and_stream, 
+								args=[])
+		self.stream_thread.daemon = True
+		self.stream_thread.start()
+		print("bound on " + str(port))
 		self.host = hostname[1].rstrip()
 		self.sock.close()
 		self.sock = socket.socket()
-		self.sock.connect((self.host, self.port))
+		self.sock.connect((self.host, port - 1))
 
 		# instantiate PyAudio (1)
 		p = pyaudio.PyAudio()
@@ -56,8 +72,21 @@ class StreamClient(object):
 			# 	print("got songlist")
 			# 	print(str(chunk).split(",")[1])
 			elif header == "SC":
+				# print("received a chunk")
 				# stream.write(bytes(header[1], "UTF-8"))
 				self.stream.write(chunk)
+				self.chunk_buffer.append(chunk)
+
+	def accept_and_stream(self):
+		c, address = self.client.accept()
+		print("found a client!")
+		while len(self.chunk_buffer) > 0:
+			try:
+				c.sendto(bytes("SC", "UTF-8"), address)
+				c.sendto(self.chunk_buffer.popleft(), address)
+			except BrokenPipeError:
+				pass
+
 
 	def stop(self):
 		self.streaming = False
