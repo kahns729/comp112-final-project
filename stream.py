@@ -23,6 +23,7 @@ class Stream(object):
 		self.request_list = deque([])
 		self.request_thread_started = False
 		self.chunk_size = None
+		self.has_client = False
 
 	def start(self):
 		while True:
@@ -34,10 +35,10 @@ class Stream(object):
 			self.new_song()
 			for chunk in self.current_song:
 				# Simply skip the time for the client
-				if len(self.clients) == 0:
+				if not self.has_client:
 					sleep(0.001)
 				#for client, address in self.clients:
-				if self.clients:
+				else:
 					client, address = self.clients[0]
 					try:
 						# chunk = chunk.raw_data[:self.chunk_size].l
@@ -50,14 +51,16 @@ class Stream(object):
 						client.sendto(chunk, address)
 					except BrokenPipeError:
 						# Remove client from request clients and clients list
-						self.rclients.pop(self.clients.index((client, address)))
-						self.clients.remove((client, address))
+						#self.rclients.pop(self.clients.index((client, address)))
+						#self.clients.remove((client, address))
+						pass
 
 	def accept_incoming_connections(self):
 		self.connect_thread = threading.Thread(target=self.accept_connection, 
 								args=[])
 		self.connect_thread.daemon = True
 		self.connect_thread.start()
+
 		if not self.request_thread_started:
 				self.request_thread = threading.Thread(target=self.request, args=[])
 				self.request_thread.daemon = True
@@ -67,14 +70,22 @@ class Stream(object):
 	def accept_connection(self):
 		while True:
 			c, address = self.sock.accept()
-			r, raddress = self.request_sock.accept()
+			if (address[0], int(address[1]) + 1) not in [addr for c, addr in self.rclients]:
+				print("got past the if")
+				r, raddress = self.request_sock.accept()
+			else:
+				print("in the else")
+			print(address)
+			print(raddress)
 			print("found a client!")
 			self.new_song(client=(c, address))
 			# Pad and send the hostname to the client
 			self.new_client(c, address)
 			
-			# self.clients.append((c, address))
+			self.clients.append((c, address))
 			self.rclients.append((r, raddress))
+			self.has_client = True
+
 
 	def new_client(self, client, address):
 		# If this is the first client, stream directly from server
@@ -105,7 +116,7 @@ class Stream(object):
 			# Pad data with whitespace so that we don't accidentally receive song data
 			data = data + (100 - len(data)) * " "
 			# for c, a in self.clients:
-			if len(self.clients) > 0:
+			if self.has_client:
 				c, a = self.clients[0]
 				c.sendto(bytes("NS100 ", "UTF-8"), a)
 				c.sendto(bytes(data, "UTF-8"), a)
@@ -135,13 +146,14 @@ class Stream(object):
 			for s in inputready:
 				print("ping")
 				data = s.recv(100)
-				print("pong")
+				#print("pong")
 				parsed_data = data.decode("utf-8").split(",")
 				command = parsed_data[0]
-				print(parsed_data)
+				#print(parsed_data)
 				try:
 					address = self.rclients[socks.index(s)][1]
 				except IndexError:
+					print("THIS IS BULLSHIT")
 					continue
 				if command == "SONGLIST":
 					print("songlist requested")
@@ -162,8 +174,14 @@ class Stream(object):
 					else:
 						s.send(bytes("Song does not exist", "UTF-8"))
 				elif command == "DC":
-					host = parsed_data[3]
-					port = int(parsed_data[5])
+					self.clients.pop(socks.index(s))
+					self.rclients.pop(socks.index(s))
+					#print((s, address))
+					print(parsed_data)
+					host = parsed_data[2]
+					port = int(parsed_data[4])
+					self.has_client = False
 					print(self.clients)
+
 
 	
