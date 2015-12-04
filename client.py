@@ -11,6 +11,7 @@ def main(argv):
 		return 1
 	host = argv[1]
 	port = int(argv[2])
+	# Start our stream client thread
 	streamClient = StreamClient(host, port)
 	streaming_thread = threading.Thread(target=streamClient.start, 
 								args=[])
@@ -22,9 +23,9 @@ def main(argv):
 	print("To request a song, type 'PLAY [songname]' or 'PLAY [song index]'")
 	cmd = input("")
 	try:
+		# Command loop to receive client input
 		while cmd != "END":
 			if cmd == "SONGS":
-				print("TRYING TO GET SONGSSSSS")
 				# SONGLIST
 				streamClient.request_songlist()
 			elif cmd == "REQUESTS":
@@ -35,7 +36,6 @@ def main(argv):
 				streamClient.request_song(cmd[5:])
 			cmd = input("")
 	except KeyboardInterrupt:
-		print("keyboard?")
 		streamClient.stop()
 	streamClient.stop()
 	streaming_thread.join()
