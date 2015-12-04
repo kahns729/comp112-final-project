@@ -37,8 +37,9 @@ class StreamClient(object):
 		print(hostname)
 
 		port, addr = self.sock.recvfrom(100)
+		before = self.port + 1
 		self.port = int(port.decode("utf-8").split("/")[1].rstrip())
-		print("Closing " + self.host + ":" + str(self.port + 1) + ", opening " 
+		print("Closing " + self.host + ":" + str(before) + ", opening " 
 			+ hostname[1] + ":" + str(self.port - 1))
 
 		self.client_sock.bind((socket.gethostname(), self.port))
@@ -49,7 +50,7 @@ class StreamClient(object):
 		self.stream_thread.daemon = True
 		self.stream_thread.start()
 
-		print("bound on " + str(port))
+		print("bound on " + str(self.port))
 		self.host = hostname[1].rstrip()
 		self.sock.close()
 		self.sock = socket.socket()

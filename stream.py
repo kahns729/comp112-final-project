@@ -24,6 +24,10 @@ class Stream(object):
 		self.request_thread_started = False
 		self.chunk_size = None
 		self.has_client = False
+		self.disconnect_count = 0
+		self.handling_disc = False
+		# self.last_disc = -1
+		# self.available_ports = []
 
 	def start(self):
 		while True:
@@ -53,6 +57,7 @@ class Stream(object):
 						# Remove client from request clients and clients list
 						#self.rclients.pop(self.clients.index((client, address)))
 						#self.clients.remove((client, address))
+						# print("broke pipe")
 						pass
 
 	def accept_incoming_connections(self):
@@ -70,28 +75,45 @@ class Stream(object):
 	def accept_connection(self):
 		while True:
 			c, address = self.sock.accept()
-			if (address[0], int(address[1]) + 1) not in [addr for c, addr in self.rclients]:
+			# if (address[0], int(address[1]) + 2) not in [addr for c, addr in self.rclients]:
+			# New client that hasn't yet connected and needs a request socket
+			print(self.handling_disc)
+			if not self.handling_disc:
+				# print(str(((address[0]), int(address[1]))))
 				print("got past the if")
 				r, raddress = self.request_sock.accept()
+				self.rclients.append((r, raddress))
+				self.new_song(client=(c, address))
+				# Pad and send the hostname to the client
+				self.new_client(c, address)
 			else:
-				print("in the else")
-			print(address)
-			print(raddress)
-			print("found a client!")
-			self.new_song(client=(c, address))
-			# Pad and send the hostname to the client
-			self.new_client(c, address)
-			
-			self.clients.append((c, address))
-			self.rclients.append((r, raddress))
-			self.has_client = True
+				# client_queue = deque(self.clients)
+				# self.clients = list(client_queue.appendleft(client_queue.pop(self.last_disc)))
+				# self.clients = list(deque(self.clients).appendleft((c, address)))
+				# first_client = self.clients[self.last_disc]
+				# self.clients.pop(self.last_disc)
+				# self.clients.insert(self.last_disc, (c, address))
+				self.handling_disc = False
+				self.clients[0] = (c, address)
+				# if (c, address) not in self.clients:
+				# 	print("whyyyyy")
+				# 	print((c, address))
+				# 	print(self.clients)
 
+			print(address)
+			# print(raddress)
+			print("found a client!")
+			self.has_client = True
+			
 
 	def new_client(self, client, address):
 		# If this is the first client, stream directly from server
 		if not self.clients:
 			client.sendto(bytes("HOST/" + self.host + (100 - len(self.host) - 5) * " ", "UTF-8"), address)
-			peer_streaming_port = str(self.port + 2 + len(self.clients))
+			# if self.available_ports:
+			# 	peer_streaming_port = str(self.available_ports.pop(0))
+			# else:
+			peer_streaming_port = str(self.port + 2 + self.disconnect_count + len(self.clients))
 			client.sendto(bytes("PORT/" + peer_streaming_port + (100 - 5 - len(peer_streaming_port)) * " ", "UTF-8"), address)
 			client, address = self.sock.accept()
 			print(address)
@@ -102,7 +124,11 @@ class Stream(object):
 			a = self.clients[-1][1]
 			host = socket.gethostbyaddr(a[0])[0]
 			client.sendto(bytes("HOST/" + host + (100 - len(host) - 5) * " ", "UTF-8"), address)
-			peer_streaming_port = str(self.port + 2 + len(self.clients))
+			# if self.available_ports:
+			# 	peer_streaming_port = str(self.available_ports.pop(0))
+			# else:
+			peer_streaming_port = str(self.port + 2 + self.disconnect_count + len(self.clients))
+			# peer_streaming_port = str(self.port + 2 + self.disconnect_count + len(self.clients))
 			client.sendto(bytes("PORT/" + peer_streaming_port + (100 - 5 - len(peer_streaming_port)) * " ", "UTF-8"), address)
 			self.clients.append((client, address))
 
@@ -118,8 +144,11 @@ class Stream(object):
 			# for c, a in self.clients:
 			if self.has_client:
 				c, a = self.clients[0]
-				c.sendto(bytes("NS100 ", "UTF-8"), a)
-				c.sendto(bytes(data, "UTF-8"), a)
+				try:
+					c.sendto(bytes("NS100 ", "UTF-8"), a)
+					c.sendto(bytes(data, "UTF-8"), a)
+				except BrokenPipeError:
+					pass
 		# First message the client will receive
 		else:
 			# Pad data with whitespace so that we don't accidentally receive song data
@@ -144,6 +173,7 @@ class Stream(object):
 				continue
 			#print("select is done")
 			for s in inputready:
+				print(len(inputready))
 				print("ping")
 				data = s.recv(100)
 				#print("pong")
@@ -174,14 +204,44 @@ class Stream(object):
 					else:
 						s.send(bytes("Song does not exist", "UTF-8"))
 				elif command == "DC":
-					self.clients.pop(socks.index(s))
-					self.rclients.pop(socks.index(s))
-					#print((s, address))
-					print(parsed_data)
-					host = parsed_data[2]
-					port = int(parsed_data[4])
-					self.has_client = False
-					print(self.clients)
+					if socks.index(s) == 0:
+						print("disconnecting")
+						self.clients.pop(0)
+						self.rclients.pop(0)
+						self.handling_disc = True
+						self.has_client = False
+						self.disconnect_count += 1
+					else:
+						self.rclients.pop(socks.index(s))
+						self.clients.pop(socks.index(s))
+						# If we are losing our client with the highest port number
+					if socks.index(s) == len(self.clients):
+						port = int(parsed_data[4])
+						print(port)
+						self.disconnect_count = port - 2 - self.port - len(self.clients)
+						print(self.disconnect_count)
+						# self.port + 2 + self.disconnect_count + len(self.clients) MUST EQUAL port - 1
+						# peer_streaming_port = str(self.port + 2 + self.disconnect_count + len(self.clients))
+					else:
+						self.disconnect_count += 1
+						
+
+					# self.disconnect_count += 1
+					# print("before: " + str(self.clients))
+					
+					# self.last_disc = socks.index(s)
+					# self.clients.pop(socks.index(s))
+					# self.rclients.pop(socks.index(s))
+					# self.disc = (self.last_disc == 0)
+					# self.has_client = (self.last_disc == 0)
+					# print(self.has_client)
+					# #print((s, address))
+					# print(parsed_data)
+					# host = parsed_data[2]
+					# port = int(parsed_data[4]) - 1
+					# self.available_ports.append(port)
+					
+					# print("after: " + str(self.clients))
 
 
 	
