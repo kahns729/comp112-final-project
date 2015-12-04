@@ -143,6 +143,10 @@ class StreamClient(object):
 			data_length = str(len(data))
 			self.client.sendto(bytes("DC" + data_length + (4 - len(data_length)) * " ", "UTF-8"), self.client_address)
 			self.client.sendto(bytes(data, "UTF-8"), self.client_address)
+		data = "HOST," + str(self.host) + ",PORT," + str(self.port)
+		data_length = str(len(data))
+		self.request_sock.send(bytes("DC," + data, "UTF-8"))
+
 
 	def song_change(self, s_data, p):
 		s_data = s_data.decode("utf-8").split("/")
@@ -154,6 +158,8 @@ class StreamClient(object):
 						channels=1,
 		                rate=self.f_rate,
 		                output=True)
+
+
 
 
 	def request_songlist(self):

@@ -161,5 +161,9 @@ class Stream(object):
 						s.send(bytes("Song " + self.songlist[int(song_name)-1] + " requested!", "UTF-8"))
 					else:
 						s.send(bytes("Song does not exist", "UTF-8"))
+				elif command == "DC":
+					host = parsed_data[3]
+					port = int(parsed_data[5])
+					print(self.clients)
 
 	
