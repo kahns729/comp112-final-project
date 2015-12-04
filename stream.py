@@ -16,7 +16,8 @@ class Stream(object):
 		self.request_sock.listen(5)
 		print("server running on " + self.host + " " + str(port))
 		self.songlist = os.listdir("../songs")
-		self.current_song = AudioSegment.from_mp3("../songs/" + random.choice(self.songlist))
+		#self.current_song = AudioSegment.from_mp3("../songs/" + random.choice(self.songlist))
+		self.current_song = AudioSegment.from_mp3("../songs/Snoop Dogg - Smoke Weed Everyday Sound Effect (music) for mlg.mp3")
 		self.clients = []
 		self.rclients = []
 		self.request_list = deque([])
@@ -28,7 +29,8 @@ class Stream(object):
 			if len(self.request_list) != 0:
 				self.current_song = AudioSegment.from_mp3("../songs/" + self.request_list.popleft())
 			else:
-				self.current_song = AudioSegment.from_mp3("../songs/" + random.choice(self.songlist))
+				#self.current_song = AudioSegment.from_mp3("../songs/" + random.choice(self.songlist))
+				self.current_song = AudioSegment.from_mp3("../songs/Snoop Dogg - Smoke Weed Everyday Sound Effect (music) for mlg.mp3")
 			self.new_song()
 			for chunk in self.current_song:
 				# Simply skip the time for the client
@@ -40,8 +42,12 @@ class Stream(object):
 					try:
 						# chunk = chunk.raw_data[:self.chunk_size].l
 						chunk = chunk.raw_data
-						client.sendto(bytes("SC", "UTF-8"), address)
-						client.sendto(chunk[:self.chunk_size].ljust(self.chunk_size), address)
+						chunk = chunk[:self.chunk_size].ljust(self.chunk_size)
+						if len(chunk) != self.chunk_size:
+							print("poop")
+						chunk_length = str(len(chunk))
+						client.sendto(bytes("SC" + chunk_length + (4-len(chunk_length))*" ", "UTF-8"), address)
+						client.sendto(chunk, address)
 					except BrokenPipeError:
 						# Remove client from request clients and clients list
 						self.rclients.pop(self.clients.index((client, address)))
@@ -97,9 +103,11 @@ class Stream(object):
 		data = str(width) + "/" + str(f_rate) + "/" + str(self.chunk_size)
 		if client == None:
 			# Pad data with whitespace so that we don't accidentally receive song data
-			data = data + (self.chunk_size - len(data)) * " "
-			for c, a in self.clients:
-				c.sendto(bytes("NS", "UTF-8"), a)
+			data = data + (100 - len(data)) * " "
+			# for c, a in self.clients:
+			if len(self.clients) > 0:
+				c, a = self.clients[0]
+				c.sendto(bytes("NS100 ", "UTF-8"), a)
 				c.sendto(bytes(data, "UTF-8"), a)
 		# First message the client will receive
 		else:
