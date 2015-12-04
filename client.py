@@ -21,18 +21,21 @@ def main(argv):
 	print("To see the queue of songs waiting to be played, type 'REQUESTS'")
 	print("To request a song, type 'PLAY [songname]' or 'PLAY [song index]'")
 	cmd = input("")
-	while cmd != "END":
-		if cmd == "SONGS":
-			print("TRYING TO GET SONGSSSSS")
-			# SONGLIST
-			streamClient.request_songlist()
-		elif cmd == "REQUESTS":
-			# REQUESTLIST
-			streamClient.request_songqueue()
-		elif "PLAY" in cmd:
-			# PLAY,songname
-			streamClient.request_song(cmd[5:])
-		cmd = input("")
+	try:
+		while cmd != "END":
+			if cmd == "SONGS":
+				print("TRYING TO GET SONGSSSSS")
+				# SONGLIST
+				streamClient.request_songlist()
+			elif cmd == "REQUESTS":
+				# REQUESTLIST
+				streamClient.request_songqueue()
+			elif "PLAY" in cmd:
+				# PLAY,songname
+				streamClient.request_song(cmd[5:])
+			cmd = input("")
+	except KeyboardInterrupt:
+		streamClient.stop()
 	streamClient.stop()
 	streaming_thread.join()
 

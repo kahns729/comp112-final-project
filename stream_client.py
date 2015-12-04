@@ -20,6 +20,7 @@ class StreamClient(object):
 		self.chunk_buffer = deque([])
 		self.client_sock = socket.socket()
 		self.has_client = False
+		self.client = None
 
 	def start(self):
 		# First receive
@@ -43,16 +44,16 @@ class StreamClient(object):
 		self.client_sock.bind((socket.gethostname(), port))
 		self.client_sock.listen(5) 
 		
+		self.stream_thread = threading.Thread(target=self.accept_and_stream, 
+								args=[])
+		self.stream_thread.daemon = True
+		self.stream_thread.start()
+
 		print("bound on " + str(port))
 		self.host = hostname[1].rstrip()
 		self.sock.close()
 		self.sock = socket.socket()
 		self.sock.connect((self.host, port - 1))
-
-		self.stream_thread = threading.Thread(target=self.accept_and_stream, 
-								args=[])
-		self.stream_thread.daemon = True
-		self.stream_thread.start()
 
 		# instantiate PyAudio (1)
 		p = pyaudio.PyAudio()
@@ -63,32 +64,40 @@ class StreamClient(object):
 		                rate=self.f_rate,
 		                output=True)
 		while self.streaming:
-			header, addr = self.sock.recvfrom(2)
+			header, addr = self.sock.recvfrom(6)
 			# print(header)
 			header = header.decode("utf-8")
-			chunk, addr = self.sock.recvfrom(self.chunk_size)
-			if len(chunk) < self.chunk_size:
+			# chunk, addr = self.sock.recvfrom(self.chunk_size)
+			chunk_size = int(header[2:])
+			chunk, addr = self.sock.recvfrom(chunk_size)
+			if len(chunk) < chunk_size:
 				print(len(chunk))
-				chunk = chunk.ljust(self.chunk_size)
+				# chunk = chunk.ljust(self.chunk_size)
 				print("less than")
+				while len(chunk) != chunk_size:
+					more_data, addr = self.sock.recvfrom(chunk_size - len(chunk))
+					chunk = chunk + more_data
 			# print(chunk)
 			# header = chunk.decode("utf-8").split("/////")
-			if header == "NS":
+			if header[:2] == "NS":
 				print("changing song")
 				self.song_change(chunk, p)
-				self.client.sendto(bytes("NC", "UTF-8"), self.client_address)
-				self.client.sendto(chunk, self.client_address)
+				if self.has_client:
+					self.client.sendto(bytes("NS100 ", "UTF-8"), self.client_address)
+					self.client.sendto(chunk, self.client_address)
 			# elif header == "SL":
 			# 	print("got songlist")
 			# 	print(str(chunk).split(",")[1])
-			elif header == "SC":
+			elif header[:2] == "SC":
 				# print("received a chunk")
 				# stream.write(bytes(header[1], "UTF-8"))
 				# print("chunk chunk chunk")
 				self.stream.write(chunk)
 				if self.has_client:
 					# print("POOP")
-					self.client.sendto(bytes("SC", "UTF-8"), self.client_address)
+					chunk_length = str(len(chunk))
+
+					self.client.sendto(bytes("SC" + chunk_length + (4 - len(chunk_length)) * " ", "UTF-8"), self.client_address)
 					self.client.sendto(chunk, self.client_address)
 
 	def accept_and_stream(self):
