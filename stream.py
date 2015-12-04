@@ -78,7 +78,7 @@ class Stream(object):
 			# if (address[0], int(address[1]) + 2) not in [addr for c, addr in self.rclients]:
 			# New client that hasn't yet connected and needs a request socket
 			print(self.handling_disc)
-			if not self.handling_disc:
+			if not self.handling_disc or not self.clients:
 				# print(str(((address[0]), int(address[1]))))
 				print("got past the if")
 				r, raddress = self.request_sock.accept()
@@ -86,6 +86,8 @@ class Stream(object):
 				self.new_song(client=(c, address))
 				# Pad and send the hostname to the client
 				self.new_client(c, address)
+				if len(self.clients) == 1:
+					self.handling_disc = False
 			else:
 				# client_queue = deque(self.clients)
 				# self.clients = list(client_queue.appendleft(client_queue.pop(self.last_disc)))
@@ -94,7 +96,10 @@ class Stream(object):
 				# self.clients.pop(self.last_disc)
 				# self.clients.insert(self.last_disc, (c, address))
 				self.handling_disc = False
-				self.clients[0] = (c, address)
+				if self.clients:
+					self.clients[0] = (c, address)
+				else:
+					self.clients.append((c, address))
 				# if (c, address) not in self.clients:
 				# 	print("whyyyyy")
 				# 	print((c, address))
@@ -210,7 +215,6 @@ class Stream(object):
 						self.rclients.pop(0)
 						self.handling_disc = True
 						self.has_client = False
-						self.disconnect_count += 1
 					else:
 						self.rclients.pop(socks.index(s))
 						self.clients.pop(socks.index(s))
