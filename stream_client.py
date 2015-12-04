@@ -37,11 +37,11 @@ class StreamClient(object):
 		print(hostname)
 
 		port, addr = self.sock.recvfrom(100)
-		port = int(port.decode("utf-8").split("/")[1].rstrip())
+		self.port = int(port.decode("utf-8").split("/")[1].rstrip())
 		print("Closing " + self.host + ":" + str(self.port + 1) + ", opening " 
-			+ hostname[1] + ":" + str(port - 1))
+			+ hostname[1] + ":" + str(self.port - 1))
 
-		self.client_sock.bind((socket.gethostname(), port))
+		self.client_sock.bind((socket.gethostname(), self.port))
 		self.client_sock.listen(5) 
 		
 		self.stream_thread = threading.Thread(target=self.accept_and_stream, 
@@ -53,7 +53,7 @@ class StreamClient(object):
 		self.host = hostname[1].rstrip()
 		self.sock.close()
 		self.sock = socket.socket()
-		self.sock.connect((self.host, port - 1))
+		self.sock.connect((self.host, self.port - 1))
 
 		# instantiate PyAudio (1)
 		p = pyaudio.PyAudio()
@@ -83,8 +83,14 @@ class StreamClient(object):
 				print("changing song")
 				self.song_change(chunk, p)
 				if self.has_client:
-					self.client.sendto(bytes("NS100 ", "UTF-8"), self.client_address)
-					self.client.sendto(chunk, self.client_address)
+					try:
+						self.client.sendto(bytes("NS100 ", "UTF-8"), self.client_address)
+						self.client.sendto(chunk, self.client_address)
+					except BrokenPipeError:
+						self.has_client = False
+						self.accept_and_stream()
+						self.stream_thread.join()
+						self.stream_thread.start()
 			# elif header == "SL":
 			# 	print("got songlist")
 			# 	print(str(chunk).split(",")[1])
@@ -96,9 +102,28 @@ class StreamClient(object):
 				if self.has_client:
 					# print("POOP")
 					chunk_length = str(len(chunk))
+					try:
+						self.client.sendto(bytes("SC" + chunk_length + (4 - len(chunk_length)) * " ", "UTF-8"), self.client_address)
+						self.client.sendto(chunk, self.client_address)
+					except BrokenPipeError:
+						self.has_client = False
+						self.stream_thread.join()
+						self.stream_thread = threading.Thread(target=self.accept_and_stream, 
+								args=[])
+						self.stream_thread.daemon = True
+						self.stream_thread.start()
+			elif header[:2] == "DC":
+				data = chunk.decode("utf-8").split("#")
+				self.host = data[1]
+				self.port = data[3]
+				print("host: " + self.host + ", port: " + self.port)
+				self.sock.close()
+				self.sock = socket.socket()
+				self.sock.connect((self.host, int(self.port) - 1))
 
-					self.client.sendto(bytes("SC" + chunk_length + (4 - len(chunk_length)) * " ", "UTF-8"), self.client_address)
-					self.client.sendto(chunk, self.client_address)
+
+		
+
 
 	def accept_and_stream(self):
 		self.client, self.client_address = self.client_sock.accept()
@@ -110,6 +135,14 @@ class StreamClient(object):
 
 	def stop(self):
 		self.streaming = False
+		print("sending host and port")
+		sleep(1)
+		# No longer streaming, due to disconnect
+		if self.has_client:
+			data = "HOST#" + str(self.host) + "#PORT#" + str(self.port)
+			data_length = str(len(data))
+			self.client.sendto(bytes("DC" + data_length + (4 - len(data_length)) * " ", "UTF-8"), self.client_address)
+			self.client.sendto(bytes(data, "UTF-8"), self.client_address)
 
 	def song_change(self, s_data, p):
 		s_data = s_data.decode("utf-8").split("/")

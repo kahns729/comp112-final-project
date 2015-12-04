@@ -35,6 +35,7 @@ def main(argv):
 				streamClient.request_song(cmd[5:])
 			cmd = input("")
 	except KeyboardInterrupt:
+		print("keyboard?")
 		streamClient.stop()
 	streamClient.stop()
 	streaming_thread.join()
