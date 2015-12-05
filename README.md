@@ -8,8 +8,9 @@ Both the server and client for the application are written in Python 3, which ca
 
 When you have Python 3, you must install the required dependencies, which can be found in the `requirements.txt` file. We recommend using a virtual environment, though it is not strictly necessary. To install the requirements, run `pip3 install -r requirements.txt`.
 
-## Running
+## Use
 ### Server
+A directory in a level above the directory the server is running from called “songs” must exist (../songs) with at least 1 .mp3 file in it in order for the program to run.
 To run the server, use:
 `python3 server.py [port]`
 
